@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ayuda Social DApp</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap">
+    <style>
+        body {
+            background-color: #181818;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 600px;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #282828;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input, button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        button.primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        button.secondary {
+            background-color: #28a745;
+            color: white;
+        }
+
+        button.tertiary {
+            background-color: #ffc107;
+            color: black;
+        }
+
+        .output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ayuda Social DApp</h1>
+
+        <div class="form-group">
+            <label for="address">Dirección del Beneficiario:</label>
+            <input type="text" id="address" placeholder="0x..." required>
+        </div>
+
+        <div class="form-group">
+            <label for="age">Edad del Beneficiario:</label>
+            <input type="number" id="age" required>
+        </div>
+
+        <button class="primary" id="registerBeneficiary">Registrar Beneficiario</button>
+
+        <div class="form-group">
+            <label for="amount">Monto del Auxilio:</label>
+            <input type="number" id="amount" required>
+        </div>
+
+        <button class="secondary" id="deliverAid">Entregar Auxilio</button>
+
+        <button class="tertiary" id="donate">Donar</button>
+
+        <div class="output" id="output"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+    <script>
+        // Dirección del contrato inteligente
+        const contractAddress = '0x97052177985616f0643CFa58503E08Ad40C3a110';
+
+        // ABI del contrato inteligente
+        const abi = [
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "_montoMinimoDonacion",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": false,
+                        "internalType": "address",
+                        "name": "beneficiario",
+                        "type": "address"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "monto",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "AuxilioEntregado",
+                "type": "event"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": false,
+                        "internalType": "address",
+                        "name": "beneficiario",
+                        "type": "address"
+                    }
+                ],
+                "name": "BeneficiarioRegistrado",
+                "type": "event"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": false,
+                        "internalType": "address",
+                        "name": "donante",
+                        "type": "address"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "monto",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "DonacionRecibida",
+                "type": "event"
+            },
+            {
+                "inputs": [],
+                "name": "donar",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "_beneficiario",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_monto",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "entregarAuxilio",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "_direccion",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_edad",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "registrarBeneficiario",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "administrador",
+                "outputs": [
+                    {
+                        "internalType": "address",
+                        "name": "",
+                        "type": "address"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "",
+                        "type": "address"
+                    }
+                ],
+                "name": "beneficiarios",
+                "outputs": [
+                    {
+                        "internalType": "address",
+                        "name": "direccion",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "edad",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "bool",
+                        "name": "haRecibidoAuxilio",
+                        "type": "bool"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "montoMinimoDonacion",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        // Variables para el contrato y la conexión con MetaMask
+        let web3;
+        let contract;
+
+        // Función para conectar con MetaMask
+        async function connectMetaMask() {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                contract = new web3.eth.Contract(abi, contractAddress);
+            } else {
+                alert("Por favor, instala MetaMask.");
+            }
+        }
+
+        // Función para registrar un beneficiario
+        async function registerBeneficiary() {
+            const address = document.getElementById('address').value;
+            const age = document.getElementById('age').value;
+            try {
+                await contract.methods.registrarBeneficiario(address, age).send({ from: web3.currentProvider.selectedAddress });
+                updateOutput("Beneficiario registrado correctamente.");
+            } catch (error) {
+                updateOutput("Error al registrar beneficiario.");
+                console.error(error);
+            }
+        }
+
+        // Función para entregar un auxilio
+        async function deliverAid() {
+            const beneficiary = document.getElementById('address').value;
+            const amount = document.getElementById('amount').value;
+            try {
+                await contract.methods.entregarAuxilio(beneficiary, amount).send({ from: web3.currentProvider.selectedAddress });
+                updateOutput("Auxilio entregado correctamente.");
+            } catch (error) {
+                updateOutput("Error al entregar auxilio.");
+                console.error(error);
+            }
+        }
+
+        // Función para realizar una donación
+        async function donate() {
+            const amount = document.getElementById('amount').value;
+            try {
+                await contract.methods.donar().send({ from: web3.currentProvider.selectedAddress, value: web3.utils.toWei(amount, 'ether') });
+                updateOutput("Donación realizada correctamente.");
+            } catch (error) {
+                updateOutput("Error al realizar donación.");
+                console.error(error);
+            }
+        }
+
+        // Función para actualizar la salida de texto
+        function updateOutput(message) {
+            document.getElementById('output').textContent = message;
+        }
+
+        // Eventos de los botones
+        document.getElementById('registerBeneficiary').addEventListener('click', registerBeneficiary);
+        document.getElementById('deliverAid').addEventListener('click', deliverAid);
+        document.getElementById('donate').addEventListener('click', donate);
+
+        // Conectar con MetaMask al cargar la página
+        window.onload = connectMetaMask;
+    </script>
+</body>
+</html>

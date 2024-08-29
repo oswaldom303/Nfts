@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Alumnos</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+
+        button {
+            font-size: 16px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+
+        .primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .secondary {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .tertiary {
+            background-color: #ffc107;
+            color: black;
+        }
+
+        input, select {
+            padding: 10px;
+            margin: 5px;
+            width: 100%;
+            box-sizing: border-box;
+            border-radius: 5px;
+            border: 1px solid #333;
+            background-color: #1c1c1c;
+            color: white;
+        }
+
+        .info {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Registro de Alumnos</h1>
+        <button id="connectButton" class="primary">Conectar Metamask</button>
+        <div class="info" id="walletInfo"></div>
+
+        <h2>Registrar Alumno</h2>
+        <input id="nombre" type="text" placeholder="Nombre">
+        <input id="apellido" type="text" placeholder="Apellido">
+        <input id="grado" type="number" placeholder="Grado">
+        <select id="sexo">
+            <option value="Masculino">Masculino</option>
+            <option value="Femenino">Femenino</option>
+            <option value="Otro">Otro</option>
+        </select>
+        <button id="registrarButton" class="secondary">Registrar</button>
+
+        <h2>Balance de Tokens</h2>
+        <div id="tokenBalance">Tokens: 0</div>
+        <button id="comprarButton" class="tertiary">Comprar Tokens</button>
+
+        <h2>Transferir Tokens</h2>
+        <input id="destino" type="text" placeholder="Dirección destino">
+        <input id="cantidad" type="number" placeholder="Cantidad">
+        <button id="transferirButton" class="primary">Transferir</button>
+
+        <div class="info" id="totalAlumnosInfo"></div>
+        <div class="info" id="totalTokensInfo"></div>
+    </div>
+
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+    <script>
+        let provider;
+        let signer;
+        let contract;
+        const contractAddress = "0x823667b44a0eff7268bbf1163fe318d738afdf42";
+        const contractABI = [
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "alumno",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "nombre",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "apellido",
+				"type": "string"
+			}
+		],
+		"name": "AlumnoActualizado",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "alumno",
+				"type": "address"
+			}
+		],
+		"name": "AlumnoEliminado",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "alumno",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "nombre",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "apellido",
+				"type": "string"
+			}
+		],
+		"name": "AlumnoRegistrado",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "spender",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "value",
+				"type": "uint256"
+			}
+		],
+		"name": "Approval",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "value",
+				"type": "uint256"
+			}
+		],
+		"name": "Transfer",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_nombre",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_apellido",
+				"type": "string"
+			},
+			{
+				"internalType": "uint8",
+				"name": "_grado",
+				"type": "uint8"
+			},
+			{
+				"internalType": "string",
+				"name": "_sexo",
+				"type": "string"
+			}
+		],
+		"name": "actualizarAlumno",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "allowance",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "alumnos",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "nombre",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "apellido",
+				"type": "string"
+			},
+			{
+				"internalType": "uint8",
+				"name": "grado",
+				"type": "uint8"
+			},
+			{
+				"internalType": "string",
+				"name": "sexo",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "alumnosList",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_spender",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_value",
+				"type": "uint256"
+			}
+		],
+		"name": "approve",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "success",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "balanceOf",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "comprarTokens",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "decimals",
+		"outputs": [
+			{
+				"internalType": "uint8",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_alumno",
+				"type": "address"
+			}
+		],
+		"name": "eliminarAlumno",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "name",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_nombre",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_apellido",
+				"type": "string"
+			},
+			{
+				"internalType": "uint8",
+				"name": "_grado",
+				"type": "uint8"
+			},
+			{
+				"internalType": "string",
+				"name": "_sexo",
+				"type": "string"
+			}
+		],
+		"name": "registrarAlumno",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "symbol",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalAlumnos",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalSupply",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_value",
+				"type": "uint256"
+			}
+		],
+		"name": "transfer",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "success",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_from",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_value",
+				"type": "uint256"
+			}
+		],
+		"name": "transferFrom",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "success",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+];
+
+        async function connectWallet() {
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            await provider.send("eth_requestAccounts", []);
+            signer = provider.getSigner();
+            document.getElementById('walletInfo').innerText = "Conectado: " + await signer.getAddress();
+            contract = new ethers.Contract(contractAddress, contractABI, signer);
+            updateBalances();
+        }
+
+        async function registrarAlumno() {
+            const nombre = document.getElementById('nombre').value;
+            const apellido = document.getElementById('apellido').value;
+            const grado = document.getElementById('grado').value;
+            const sexo = document.getElementById('sexo').value;
+            await contract.registrarAlumno(nombre, apellido, grado, sexo);
+            alert('Alumno registrado con éxito');
+        }
+
+        async function comprarTokens() {
+            const tx = await contract.comprarTokens({ value: ethers.utils.parseEther("0.01") });
+            await tx.wait();
+            alert('Tokens comprados con éxito');
+            updateBalances();
+        }
+
+        async function transferirTokens() {
+            const destino = document.getElementById('destino').value;
+            const cantidad = document.getElementById('cantidad').value;
+            await contract.transfer(destino, ethers.utils.parseUnits(cantidad, 18));
+            alert('Tokens transferidos con éxito');
+        }
+
+        async function updateBalances() {
+            const balance = await contract.balanceOf(await signer.getAddress());
+            document.getElementById('tokenBalance').innerText = "Tokens: " + ethers.utils.formatUnits(balance, 18);
+
+            const totalAlumnos = await contract.totalAlumnos();
+            document.getElementById('totalAlumnosInfo').innerText = "Total de Alumnos: " + totalAlumnos;
+
+            const totalTokens = await contract.totalSupply();
+            document.getElementById('totalTokensInfo').innerText = "Tokens en circulación: " + ethers.utils.formatUnits(totalTokens, 18);
+        }
+
+        document.getElementById('connectButton').addEventListener('click', connectWallet);
+        document.getElementById('registrarButton').addEventListener('click', registrarAlumno);
+        document.getElementById('comprarButton').addEventListener('click', comprarTokens);
+        document.getElementById('transferirButton').addEventListener('click', transferirTokens);
+    </script>
+</body>
+</html>
